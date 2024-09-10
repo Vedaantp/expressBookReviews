@@ -1,5 +1,6 @@
 const express = require('express');
-let books = require("./booksdb.js");
+// const axios = require('axios');
+const { getBooks } = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const public_users = express.Router();
@@ -7,14 +8,26 @@ const public_users = express.Router();
 
 public_users.post("/register", (req, res) => {
     //Write your code here
-    return res.status(300).json({ message: "Yet to be implemented" });
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required." });
+    }
+
+    if (users[username]) {
+        return res.status(409).json({ message: "Username already exists." });
+    }
+
+    users[username] = { password: password };
+
+    res.status(201).json({ message: `User ${username} registered successfully.` });
 });
 
 // Get the book list available in the shop
-public_users.get('/', function (req, res) {
+public_users.get('/', async (req, res) => {
     //Write your code here
     try {
-        // Return the list of books in the response
+        const books = await getBooks();  // Fetch books using the function from booksdb.js
         res.status(200).json({
             message: 'List of available books',
             books: books
@@ -28,9 +41,9 @@ public_users.get('/', function (req, res) {
 });
 
 // Get book details based on ISBN
-public_users.get('/isbn/:isbn', function (req, res) {
-    //Write your code here
+public_users.get('/isbn/:isbn', async (req, res) => {
     try {
+        const books = await getBooks();  // Fetch books using the function from booksdb.js
         const isbn = req.params.isbn;
         const filtered_book = books[isbn];
 
@@ -54,46 +67,63 @@ public_users.get('/isbn/:isbn', function (req, res) {
 });
 
 // Get book details based on author
-public_users.get('/author/:author', function (req, res) {
+public_users.get('/author/:author', async (req, res) => {
     //Write your code here
-    const author = req.params.author;
-    const filteredBooks = Object.keys(books).reduce((result, bookId) => {
-        let book = books[bookId];
-        if (book.author.toLowerCase() === author.toLowerCase()) {
-            result[bookId] = book;
-        }
-        return result;
-    }, {});
+    try {
+        const books = await getBooks();  // Fetch books using the function from booksdb.js
+        const author = req.params.author;
 
-    if (Object.keys(filteredBooks).length > 0) {
-        return res.status(200).json({
-            message: `List of all books by author: ${author}`,
-            books: filteredBooks,
+        const filteredBooks = Object.keys(books).reduce((result, bookId) => {
+            let book = books[bookId];
+            if (book.author.toLowerCase() === author.toLowerCase()) {
+                result[bookId] = book;
+            }
+            return result;
+        }, {});
+
+        if (Object.keys(filteredBooks).length > 0) {
+            return res.status(200).json({
+                message: `List of all books by author: ${author}`,
+                books: filteredBooks,
+            });
+        } else {
+            return res.status(300).json({ message: `Error retrieving books by author: ${author}` });
+        }
+    } catch (error) {
+        res.status(500).json({
+            message: 'Error fetching the list of books',
+            error: error.message
         });
-    } else {
-        return res.status(300).json({ message: `Error retrieving books by author: ${author}` });
     }
 });
 
 // Get all books based on title
-public_users.get('/title/:title', function (req, res) {
+public_users.get('/title/:title', async (req, res) => {
     //Write your code here
-    const title = req.params.title;
-    const filteredBooks = Object.keys(books).reduce((result, bookId) => {
-        let book = books[bookId];
-        if (book.title.toLowerCase() === title.toLowerCase()) {
-            result[bookId] = book;
-        }
-        return result;
-    }, {});
+    try {
+        const books = await getBooks();  // Fetch books using the function from booksdb.js
+        const title = req.params.title;
+        const filteredBooks = Object.keys(books).reduce((result, bookId) => {
+            let book = books[bookId];
+            if (book.title.toLowerCase() === title.toLowerCase()) {
+                result[bookId] = book;
+            }
+            return result;
+        }, {});
 
-    if (Object.keys(filteredBooks).length > 0) {
-        return res.status(200).json({
-            message: `List of all books by title: ${title}`,
-            books: filteredBooks,
+        if (Object.keys(filteredBooks).length > 0) {
+            return res.status(200).json({
+                message: `List of all books by title: ${title}`,
+                books: filteredBooks,
+            });
+        } else {
+            return res.status(300).json({ message: `Error retrieving books by title: ${title}` });
+        }
+    } catch (error) {
+        res.status(500).json({
+            message: 'Error fetching the list of books',
+            error: error.message
         });
-    } else {
-        return res.status(300).json({ message: `Error retrieving books by title: ${title}` });
     }
 });
 

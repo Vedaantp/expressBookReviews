@@ -5,6 +5,7 @@ const customer_routes = require('./router/auth_users.js').authenticated;
 const genl_routes = require('./router/general.js').general;
 
 const app = express();
+const JWT_SECRET = '3vFjk!7hPnQ%23nJs8dVhF$9*L!jZ3Aq5#nX!';
 
 app.use(express.json());
 
@@ -18,8 +19,12 @@ app.use("/customer/auth/*", function auth(req, res, next) {
         return res.status(403).json({ message: 'No token provided' });
     }
 
+    if (token != req.session.token) {
+        return res.status(401).json({message: 'Invalid token'});
+    }
+
     // Verify the token
-    jwt.verify(token, 'your-secret-key', function (err, decoded) {
+    jwt.verify(token, JWT_SECRET, function (err, decoded) {
         if (err) {
             return res.status(403).json({ message: 'Failed to authenticate token' });
         }
